@@ -1,17 +1,36 @@
 import Actblue
+import Bloomerang
 import time
 
-data = {
-    "csv_type": "paid_contributions",
-    "date_range_start": "2022-01-01",
-    "date_range_end": "2022-03-15",
-}
-id = Actblue.post('csvs', data)['id']
+from datetime import date
+today = date.today().strftime("%Y-%m-%d")
 
-resp = Actblue.get('csvs/{}'.format(id))
-while resp['status'] != 'complete':
-    time.sleep(5)
-    resp = Actblue.get('csvs/{}'.format(id))
+ab_json = Actblue.get_contributions('2022-01-01', today)
 
-Actblue.download(resp['download_url'], 'donors.csv')
 
+#map ab fields to bloomerang fields
+constituents = []
+transactions = []
+for ab_transaction in ab_json:
+    constituent = {}
+    constituent['FirstName'] = ab_transaction['Donor First Name']
+    constituent['LastName'] = ab_transaction['Donor Last Name']
+    constituent['Employer'] = ab_transaction['Donor Employer']
+    constituent['PrimaryAddress']['Street'] = ab_transaction['Donor Addr1']
+    constituent['PrimaryAddress']['City'] = ab_transaction['Donor City']
+    constituent['PrimaryAddress']['State'] = ab_transaction['Donor State']
+    constituent['PrimaryAddress']['PostalCode'] = ab_transaction['Donor ZIP']
+    constituent['PrimaryAddress']['Country'] = ab_transaction['Donor Country']
+    constituent['JobTitle'] = ab_transaction['Donor Occupation']
+    constituent['PrimaryEmail']['Value'] = ab_transaction['Donor Email']
+    constituent['PrimaryPhone']['Number'] = ab_transaction['Donor Phone']
+    constituents.append(constituent)
+
+    #not sure right now how to map transactions to their donors?
+    # transaction = {}
+    # transaction['Date'] = ab_transaction['Date']
+    # transaction['Amount'] = ab_transaction['Date']
+
+# resp = Bloomerang.get('constituents?take=10')
+# resp = Bloomerang.get('transactions?take=10')
+# print(resp)
