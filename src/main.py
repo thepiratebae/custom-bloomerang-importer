@@ -27,14 +27,13 @@ constituents.append(mock.constituent())
 transactions.append(mock.transaction())
 
 
-for c in constituents:
-    # resp = Bloomerang.get('constituents/search?take=1&search={} {}'.format("Jordan", "Applewhite"))
+for c, t in zip(constituents, transactions):
     constituentSearch = Bloomerang.get('constituents/search?search={} {}'.format(c['FirstName'], c['LastName']))
     logging.debug(constituentSearch)
     if constituentSearch['ResultCount'] == 0:
         constituentCreate = Bloomerang.post_json('constituent', c)
         logging.debug(constituentCreate)        
 
-        transaction['AccountId'] = constituentCreate['Id']
-        transactionCreate = Bloomerang.post_json('transaction', transaction)
+        t['AccountId'] = constituentCreate['Id']
+        transactionCreate = Bloomerang.post_json('transaction', t)
         logging.debug(transactionCreate)
