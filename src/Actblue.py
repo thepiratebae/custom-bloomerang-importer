@@ -49,3 +49,48 @@ def get_contributions(start_date, end_date):
         resp = get('csvs/{}'.format(id))
 
     return download_csv_to_json(resp['download_url'])
+
+
+# map actblue fields to bloomerang fields
+def map_fields(ab_transaction):
+    constituent = {
+        "Type": "Individual",
+        "Status": "Active",
+        "FirstName": ab_transaction['Donor First Name'],
+        "LastName": ab_transaction['Donor Last Name'],
+        "JobTitle": ab_transaction['Donor Occupation'],
+        "Employer": ab_transaction['Donor Employer'],
+        "PrimaryEmail": {
+        "Type": "Home",
+        "Value": ab_transaction['Donor Email'],
+        },
+        "PrimaryPhone": {
+        "Type": "Home",
+        "Number": ab_transaction['Donor Phone'],
+        },
+        "PrimaryAddress": {
+        "Type": "Home",
+        "Street": ab_transaction['Donor Addr1'],
+        "City": ab_transaction['Donor City'],
+        "State": ab_transaction['Donor State'],
+        "PostalCode": ab_transaction['Donor ZIP'],
+        "Country": ab_transaction['Donor Country'],
+        },
+    }
+
+    transaction = {
+        'Date': ab_transaction['Date'],
+        'Amount': ab_transaction['Amount'],
+        'Method': 'CreditCard',
+        # 'AccountId': Must get this from new constituent, otherwise search constituent
+        "Designations": [
+        {
+            "Amount": ab_transaction['Amount'],
+            "Note": ab_transaction["Reference Code"],
+            "Type": "Donation",
+            "FundId": 840704, #fund: api_test
+        },        
+        ]
+    }
+    
+    return constituent, transaction

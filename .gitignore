@@ -1,3 +1,7 @@
 *pycache*
 *.csv
 .env
+.log
+mock_data
+schema
+*.log

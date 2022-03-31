@@ -1,36 +1,40 @@
 import Actblue
 import Bloomerang
-import time
+import logging
+import mock_data.fakey_bloomerang as mock
+
+logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w')
 
 from datetime import date
 today = date.today().strftime("%Y-%m-%d")
 
-ab_json = Actblue.get_contributions('2022-01-01', today)
+# keep commented out to use mock data
+# ab_json = Actblue.get_contributions('2022-01-01', today)
 
-
-#map ab fields to bloomerang fields
 constituents = []
 transactions = []
-for ab_transaction in ab_json:
-    constituent = {}
-    constituent['FirstName'] = ab_transaction['Donor First Name']
-    constituent['LastName'] = ab_transaction['Donor Last Name']
-    constituent['Employer'] = ab_transaction['Donor Employer']
-    constituent['PrimaryAddress']['Street'] = ab_transaction['Donor Addr1']
-    constituent['PrimaryAddress']['City'] = ab_transaction['Donor City']
-    constituent['PrimaryAddress']['State'] = ab_transaction['Donor State']
-    constituent['PrimaryAddress']['PostalCode'] = ab_transaction['Donor ZIP']
-    constituent['PrimaryAddress']['Country'] = ab_transaction['Donor Country']
-    constituent['JobTitle'] = ab_transaction['Donor Occupation']
-    constituent['PrimaryEmail']['Value'] = ab_transaction['Donor Email']
-    constituent['PrimaryPhone']['Number'] = ab_transaction['Donor Phone']
-    constituents.append(constituent)
 
-    #not sure right now how to map transactions to their donors?
-    # transaction = {}
-    # transaction['Date'] = ab_transaction['Date']
-    # transaction['Amount'] = ab_transaction['Date']
+try:
+  for ab_transaction in ab_json:
+      constituent, transaction = Actblue.map_fields(ab_transaction)
+      constituents.append(constituent)
+      transactions.append(transaction)
 
-# resp = Bloomerang.get('constituents?take=10')
-# resp = Bloomerang.get('transactions?take=10')
-# print(resp)
+except:
+  pass
+
+constituents.append(mock.constituent())
+transactions.append(mock.transaction())
+
+
+for c in constituents:
+    # resp = Bloomerang.get('constituents/search?take=1&search={} {}'.format("Jordan", "Applewhite"))
+    constituentSearch = Bloomerang.get('constituents/search?search={} {}'.format(c['FirstName'], c['LastName']))
+    logging.debug(constituentSearch)
+    if constituentSearch['ResultCount'] == 0:
+        constituentCreate = Bloomerang.post_json('constituent', c)
+        logging.debug(constituentCreate)        
+
+        transaction['AccountId'] = constituentCreate['Id']
+        transactionCreate = Bloomerang.post_json('transaction', transaction)
+        logging.debug(transactionCreate)

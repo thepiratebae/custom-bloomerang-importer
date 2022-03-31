@@ -18,3 +18,21 @@ def get(endpoint):
     return json.loads(r.text)
     
 
+def post(endpoint, _data):
+    load_dotenv()
+    url = "{}{}".format(domain, endpoint)
+    header = {
+        "X-API-KEY": os.getenv('BLOOMERANG_KEY')
+    }
+    r = requests.post(url, data=_data, headers=header)
+    return json.loads(r.text)
+
+
+def post_json(endpoint, _json):
+    load_dotenv()
+    url = "{}{}".format(domain, endpoint)
+    header = {
+        "X-API-KEY": os.getenv('BLOOMERANG_KEY')
+    }
+    r = requests.post(url, json=_json, headers=header)
+    return json.loads(r.text)
