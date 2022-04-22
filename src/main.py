@@ -1,31 +1,69 @@
 import Actblue
 import Bloomerang
-import logging
 import mock_data.fakey_bloomerang as mock
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--debug', action='store_true')
+parser.add_argument('--auto', action='store_true')
+parser.add_argument('--manual', action='store_true')
+args = parser.parse_args()
+
+import logging
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w')
 
-from datetime import date
-today = date.today().strftime("%Y-%m-%d")
+ab_json = ''
 
-# keep commented out to use mock data
-# ab_json = Actblue.get_contributions('2022-01-01', today)
+if args.auto:
+  import datetime
+  today = datetime.date.today().strftime("%Y-%m-%d")
+  tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+  ab_json = Actblue.get_contributions(today, tomorrow)
+
+elif args.manual:
+  import re
+  date_format = re.compile('\d{4}-\d{2}-\d{2}')
+  
+  while True:
+    start_date = input("Start date? (format yyyy-mm-dd): ").strip()
+    if re.fullmatch(date_format, start_date):
+      break
+    else:
+      print("wrong format, try again")
+
+  while True:
+    end_date = input("End date? (format yyyy-mm-dd, must be at least one day ahead of start date): ").strip()
+    if re.fullmatch(date_format, end_date):
+      break
+    else:
+      print("wrong format, try again")
+
+  ab_json = Actblue.get_contributions(start_date, end_date)
+
 
 constituents = []
 transactions = []
 
-try:
+if args.debug:
+  #we're using mock data
+  constituents.append(mock.constituent())
+  transactions.append(mock.transaction())
+  
+else:
   for ab_transaction in ab_json:
-      constituent, transaction = Actblue.map_fields(ab_transaction)
-      constituents.append(constituent)
-      transactions.append(transaction)
+    constituent, transaction = Actblue.map_fields(ab_transaction)
+    constituents.append(constituent)
+    transactions.append(transaction)
 
-except:
-  pass
+if not ab_json:
+  logging.debug('No transactions')
+  import sys
+  sys.exit()
 
-constituents.append(mock.constituent())
-transactions.append(mock.transaction())
+logging.debug("ab_json")
+logging.debug(ab_json)
 
+input('Press enter to upload to bloomerang...')
 
 for c, t in zip(constituents, transactions):
   constituentSearch = Bloomerang.get('constituents/search?search={} {}'.format(c['FirstName'], c['LastName']))
@@ -45,6 +83,10 @@ for c, t in zip(constituents, transactions):
   else:
     found_const = False
     for fc in constituentSearch['Results']:
+      logging.debug("fc")
+      logging.debug(fc)
+      logging.debug("c")
+      logging.debug(c)
       if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
           fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower() and
           fc['PrimaryAddress']['Type'].lower()   == c['PrimaryAddress']['Type'].lower()):
@@ -75,6 +117,7 @@ for c, t in zip(constituents, transactions):
     
     #check that the one we're importing doesn't already exist
     #by using the unique Actblue ReceiptId we stored in a custom field 
+    #don't run this on AB history before _____ or it will duplicate transactions!
     id_already_exists = False
     for dm in datematches:
       for value in dm['Designations'][0]['CustomValues']:

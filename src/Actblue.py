@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import json
 import csv
+import time 
 
 # Documentation  https://secure.actblue.com/docs/csv_api
 
@@ -32,7 +33,7 @@ def download_csv_to_json(url):
     for row in csvReader: 
         jsonArray.append(row)
 
-    return json.dumps(jsonArray, indent=4)
+    return json.loads(json.dumps(jsonArray, indent=4))
  
 
 def get_contributions(start_date, end_date):
@@ -77,6 +78,8 @@ def map_fields(ab_transaction):
         "Country": ab_transaction['Donor Country'],
         },
     }
+    if constituent['PrimaryPhone']['Number'] == '':
+        del constituent['PrimaryPhone']
 
     transaction = {
         'Date': ab_transaction['Date'],
@@ -88,7 +91,14 @@ def map_fields(ab_transaction):
             "Amount": ab_transaction['Amount'],
             "Note": ab_transaction["Reference Code"],
             "Type": "Donation",
-            "FundId": 840704, #fund: api_test
+            # "FundId": 840704, #fund: api_test
+            "FundId": 10, #fund: Unrestricted
+            "CustomValues": [
+            {
+                "FieldId": 854016, #external payment id custom field
+                "Value": ab_transaction['Receipt ID'] #actblue receipt id, for example
+            }
+        ]
         },        
         ]
     }
