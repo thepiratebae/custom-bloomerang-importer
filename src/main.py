@@ -1,7 +1,10 @@
-from tracemalloc import start
+import os
 import Actblue
 import Bloomerang
-import mock_data.fakey_bloomerang as mock
+try:
+  import mock_data.fakey_bloomerang as mock
+except:
+  pass
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -10,10 +13,14 @@ parser.add_argument('--auto', action='store_true')
 parser.add_argument('--manual', action='store_true')
 args = parser.parse_args()
 
+
 import logging
 import datetime
 log_timestamp = datetime.datetime.timestamp(datetime.datetime.now())
-logging.basicConfig(level=logging.DEBUG, filename='logs/{}.log'.format(log_timestamp), filemode='w')
+this_path = os.path.dirname(os.path.abspath(__file__))
+log_path = os.path.join(this_path, '..', 'logs', str(log_timestamp) + '.log')
+# logging.basicConfig(level=logging.DEBUG, filename='logs/{}.log'.format(log_timestamp), filemode='w')
+logging.basicConfig(level=logging.DEBUG, filename=log_path, filemode='w')
 
 ab_json = ''
 
