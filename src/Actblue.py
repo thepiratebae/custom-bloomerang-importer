@@ -71,7 +71,7 @@ def map_fields(ab_transaction):
         },
         "PrimaryAddress": {
         "Type": "Home",
-        "Street": ab_transaction['Donor Addr1'],
+        "Street": "{} {}".format(ab_transaction['Donor Addr1'], ab_transaction['Donor Addr2']),
         "City": ab_transaction['Donor City'],
         "State": ab_transaction['Donor State'],
         "PostalCode": ab_transaction['Donor ZIP'],
@@ -80,6 +80,10 @@ def map_fields(ab_transaction):
     }
     if constituent['PrimaryPhone']['Number'] == '':
         del constituent['PrimaryPhone']
+
+    if constituent['PrimaryAddress']['City'] == '':
+        del constituent['PrimaryAddress']
+
 
     transaction = {
         'Date': ab_transaction['Date'],

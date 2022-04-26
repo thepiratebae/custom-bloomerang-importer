@@ -1,3 +1,4 @@
+from tracemalloc import start
 import Actblue
 import Bloomerang
 import mock_data.fakey_bloomerang as mock
@@ -10,15 +11,17 @@ parser.add_argument('--manual', action='store_true')
 args = parser.parse_args()
 
 import logging
-logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w')
+import datetime
+log_timestamp = datetime.datetime.timestamp(datetime.datetime.now())
+logging.basicConfig(level=logging.DEBUG, filename='logs/{}.log'.format(log_timestamp), filemode='w')
 
 ab_json = ''
 
 if args.auto:
-  import datetime
   today = datetime.date.today().strftime("%Y-%m-%d")
   tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
   ab_json = Actblue.get_contributions(today, tomorrow)
+  logging.debug('Range: {} to {}'.format(today, tomorrow))
 
 elif args.manual:
   import re
@@ -39,7 +42,7 @@ elif args.manual:
       print("wrong format, try again")
 
   ab_json = Actblue.get_contributions(start_date, end_date)
-
+  logging.debug('Range: {} to {}'.format(start_date, end_date))
 
 constituents = []
 transactions = []
@@ -63,14 +66,15 @@ if not ab_json:
 logging.debug("ab_json")
 logging.debug(ab_json)
 
-input('Press enter to upload to bloomerang...')
+# if not args.auto:
+#   input('Press enter to upload to bloomerang...')
 
 for c, t in zip(constituents, transactions):
-  constituentSearch = Bloomerang.get('constituents/search?search={} {}'.format(c['FirstName'], c['LastName']))
+  constituentSearch = Bloomerang.get('constituents/search?take=3&search={} {}'.format(c['FirstName'], c['LastName']))
   
   #never seen this name before, assume new constituent
   if constituentSearch['ResultCount'] == 0:
-    logging.debug('new constituent, new transaction')
+    logging.debug('STATUS: new constituent, new transaction')
     constituentCreate = Bloomerang.post_json('constituent', c)
     logging.debug(constituentCreate)        
 
@@ -81,21 +85,29 @@ for c, t in zip(constituents, transactions):
   
   #constituent by that name already exists, use address to verify identity
   else:
+    logging.debug("c")
+    logging.debug(c)
     found_const = False
     for fc in constituentSearch['Results']:
       logging.debug("fc")
       logging.debug(fc)
-      logging.debug("c")
-      logging.debug(c)
-      if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
-          fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower() and
-          fc['PrimaryAddress']['Type'].lower()   == c['PrimaryAddress']['Type'].lower()):
-            found_const = fc
-            break
 
-    #name matches but address doesn't, assume new constituent
+      try:
+        if (fc['PrimaryEmail']['Value'].lower() == c['PrimaryEmail']['Value'].lower()):
+          found_const = fc
+          break
+      except:
+        pass
+
+      # if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
+      #     fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower() and
+      #     fc['PrimaryAddress']['Type'].lower()   == c['PrimaryAddress']['Type'].lower()):
+      #       found_const = fc
+      #       break
+
+    #name matches but email doesn't, assume new constituent
     if not found_const:
-      logging.debug('new constituent (same name), new transaction')
+      logging.debug('STATUS: new constituent (no search match), new transaction')
       constituentCreate = Bloomerang.post_json('constituent', c)
       logging.debug(constituentCreate)        
 
@@ -129,8 +141,8 @@ for c, t in zip(constituents, transactions):
     if not id_already_exists:
       t['AccountId'] = found_const['Id']
       transactionCreate = Bloomerang.post_json('transaction', t)
-      logging.debug('constituent exists, new transaction')              
+      logging.debug('STATUS: constituent exists, new transaction')              
       logging.debug(transactionCreate)
       continue           
 
-  logging.debug('constituent exists, transaction exists')
+  logging.debug('STATUS: constituent exists, transaction exists')
