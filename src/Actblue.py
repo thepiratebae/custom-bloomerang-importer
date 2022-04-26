@@ -81,6 +81,9 @@ def map_fields(ab_transaction):
     if constituent['PrimaryPhone']['Number'] == '':
         del constituent['PrimaryPhone']
 
+    if constituent['PrimaryEmail']['Value'] == '':
+        del constituent['PrimaryEmail']
+
     if constituent['PrimaryAddress']['City'] == '':
         del constituent['PrimaryAddress']
 

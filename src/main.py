@@ -26,9 +26,10 @@ ab_json = ''
 
 if args.auto:
   today = datetime.date.today().strftime("%Y-%m-%d")
+  yesterday = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
   tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-  ab_json = Actblue.get_contributions(today, tomorrow)
-  logging.debug('Range: {} to {}'.format(today, tomorrow))
+  ab_json = Actblue.get_contributions(yesterday, tomorrow)
+  logging.debug('Range: {} to {}'.format(yesterday, tomorrow))
 
 elif args.manual:
   import re
