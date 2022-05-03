@@ -78,14 +78,31 @@ def map_fields(ab_transaction):
         "Country": ab_transaction['Donor Country'],
         },
     }
+
+
+    # bloomerang errors on uploading these fields with partial values
     if constituent['PrimaryPhone']['Number'] == '':
         del constituent['PrimaryPhone']
 
+    # bloomerang errors on uploading these fields with partial values
     if constituent['PrimaryEmail']['Value'] == '':
         del constituent['PrimaryEmail']
 
-    if constituent['PrimaryAddress']['City'] == '':
+    #may need to add more of these for different countries... Bloomerang doesnt support
+    # 'City, State, and PostalCode are not allowed to be used for Australia. 
+    # Include city, state, and postal code in Street field instead.'
+    if constituent['PrimaryAddress']['Country'] != 'United States':
+        constituent['PrimaryAddress']['Street'] += '{}, {} {}'.format(constituent['PrimaryAddress']['City'], 
+                                                                    constituent['PrimaryAddress']['State'],
+                                                                    constituent['PrimaryAddress']['PostalCode'])
+        del constituent['PrimaryAddress']['City']
+        del constituent['PrimaryAddress']['State']
+        del constituent['PrimaryAddress']['PostalCode']
+
+    #some uploads don't provide an address, somehow. Bloomerang wont let us upload with partial address so delete it
+    elif constituent['PrimaryAddress']['City'] == '':
         del constituent['PrimaryAddress']
+ 
 
 
     transaction = {

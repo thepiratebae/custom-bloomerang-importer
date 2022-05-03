@@ -28,6 +28,20 @@ def post(endpoint, _data):
     return json.loads(r.text)
 
 
+def delete(endpoint):
+    load_dotenv()
+    url = "{}{}".format(domain, endpoint)
+    header = {
+        "X-API-KEY": os.getenv('BLOOMERANG_KEY')
+    }
+    r = requests.delete(url, headers=header)
+    return json.loads(r.text)
+
+
+# def deleteTransactionsOnConstituent(id):
+#     transactions = get('transactions?accountId'.format(id))
+
+
 def post_json(endpoint, _json):
     load_dotenv()
     url = "{}{}".format(domain, endpoint)

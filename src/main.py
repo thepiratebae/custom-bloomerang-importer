@@ -63,6 +63,9 @@ if args.debug:
 else:
   for ab_transaction in ab_json:
     constituent, transaction = Actblue.map_fields(ab_transaction)
+    if not constituent['PrimaryEmail']:
+      logging.debug('No email, not uploading: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+      continue
     constituents.append(constituent)
     transactions.append(transaction)
 
@@ -91,7 +94,7 @@ for c, t in zip(constituents, transactions):
     logging.debug(transactionCreate)
     continue
   
-  #constituent by that name already exists, use address to verify identity
+  #constituent by that name already exists, verify identity
   else:
     logging.debug("c")
     logging.debug(c)
@@ -137,7 +140,7 @@ for c, t in zip(constituents, transactions):
     
     #check that the one we're importing doesn't already exist
     #by using the unique Actblue ReceiptId we stored in a custom field 
-    #don't run this on AB history before _____ or it will duplicate transactions!
+    #don't run this on AB history before 03/04/2022 or it will duplicate transactions!
     id_already_exists = False
     for dm in datematches:
       for value in dm['Designations'][0]['CustomValues']:
