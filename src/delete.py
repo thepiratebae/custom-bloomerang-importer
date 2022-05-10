@@ -49,6 +49,8 @@ for constituent in constituents:
     CreatedDateObj = datetime.datetime.strptime(CreatedDate, "%Y-%m-%dT%H:%M:%SZ")
     StartDateObj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     EndDateObj = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+
+    #note: exclude end date < not <=
     if StartDateObj <= CreatedDateObj < EndDateObj:
 
       logging.debug('valid delete target: {} {}'.format(constituent['FirstName'], constituent['LastName']))
@@ -61,6 +63,8 @@ for constituent in constituents:
         #double check this transaction was made by us and is in range
         if transaction['AuditTrail']['CreatedName'] == os.getenv('BLOOMERANG_API_USER'):
           TransactionCreatedDateObj = datetime.datetime.strptime(transaction['AuditTrail']['CreatedDate'], "%Y-%m-%dT%H:%M:%SZ")
+
+          #note: exclude end date < not <=
           if StartDateObj <= TransactionCreatedDateObj < EndDateObj:
 
             #and delete it!

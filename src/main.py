@@ -24,6 +24,7 @@ logging.basicConfig(level=logging.DEBUG, filename=log_path, filemode='w')
 
 ab_json = ''
 
+#this is how the program is set up to run automatically on a server, every day
 if args.auto:
   today = datetime.date.today().strftime("%Y-%m-%d")
   yesterday = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
@@ -31,6 +32,8 @@ if args.auto:
   ab_json = Actblue.get_contributions(yesterday, tomorrow)
   logging.debug('Range: {} to {}'.format(yesterday, tomorrow))
 
+
+#this is how it's set up to run on an arbitrary date range 
 elif args.manual:
   import re
   date_format = re.compile('\d{4}-\d{2}-\d{2}')
@@ -52,8 +55,10 @@ elif args.manual:
   ab_json = Actblue.get_contributions(start_date, end_date)
   logging.debug('Range: {} to {}'.format(start_date, end_date))
 
+
 constituents = []
 transactions = []
+
 
 if args.debug:
   #we're using mock data
@@ -63,9 +68,17 @@ if args.debug:
 else:
   for ab_transaction in ab_json:
     constituent, transaction = Actblue.map_fields(ab_transaction)
+
+    #screen for some conditions that would prevent us from importing
+    #this part is CRITICAL for preventing duplicate uploads
     if not constituent['PrimaryEmail']:
       logging.debug('No email, not uploading: {} {}'.format(constituent["FirstName"], constituent['LastName']))
       continue
+    if float(transaction['Amount']) < 3.0:
+        if not (('PrimaryAddress' in constituent) and (constituent['PrimaryAddress']['State'] == 'NH')):
+          logging.debug('Under $3 and not NH, not uploading to Bloomerang: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+          continue
+        
     constituents.append(constituent)
     transactions.append(transaction)
 
@@ -77,11 +90,9 @@ if not ab_json:
 logging.debug("ab_json")
 logging.debug(ab_json)
 
-# if not args.auto:
-#   input('Press enter to upload to bloomerang...')
 
 for c, t in zip(constituents, transactions):
-  constituentSearch = Bloomerang.get('constituents/search?take=3&search={} {}'.format(c['FirstName'], c['LastName']))
+  constituentSearch = Bloomerang.get('constituents/search?take=6&search={} {}'.format(c['FirstName'], c['LastName']))
   
   #never seen this name before, assume new constituent
   if constituentSearch['ResultCount'] == 0:
@@ -94,31 +105,47 @@ for c, t in zip(constituents, transactions):
     logging.debug(transactionCreate)
     continue
   
-  #constituent by that name already exists, verify identity
+  #else constituent by that name already exists, verify identity
   else:
     logging.debug("c")
     logging.debug(c)
     found_const = False
+    first_result = False
     for fc in constituentSearch['Results']:
-      logging.debug("fc")
-      logging.debug(fc)
 
-      try:
+      #keep log size down by only logging first (likely) match
+      if not first_result:
+        logging.debug("fc")
+        logging.debug(fc)
+        first_result = True
+
+
+      #Prevent Duplicates!
+      #First try to identify existing constituent by email
+      #fyi we should have already filtered out c's without an email
+      if (('PrimaryEmail' in fc) and ('PrimaryEmail' in c)):
         if (fc['PrimaryEmail']['Value'].lower() == c['PrimaryEmail']['Value'].lower()):
           found_const = fc
           break
-      except:
-        pass
 
-      # if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
-      #     fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower() and
-      #     fc['PrimaryAddress']['Type'].lower()   == c['PrimaryAddress']['Type'].lower()):
-      #       found_const = fc
-      #       break
 
-    #name matches but email doesn't, assume new constituent
+      #then if no email match, try to identify by address
+      #Actblue.py should have already deleted c['PrimaryAddress'] if it's blank
+      if (('PrimaryAddress' in c) and ('PrimaryAddress' in fc)): 
+        if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
+            fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower()):
+              found_const = fc
+              break
+
+
+    #name matches but email and address don't, assume new constituent
     if not found_const:
-      logging.debug('STATUS: new constituent (no search match), new transaction')
+      #if we don't get an email match and there's no address, it's not dupe-safe to upload
+      if not ('PrimaryAddress' in c):
+        logging.debug('STATUS: no email match, no address provided, skipping')
+        continue
+
+      logging.debug('STATUS: new constituent (no email/addr match), new transaction')
       constituentCreate = Bloomerang.post_json('constituent', c)
       logging.debug(constituentCreate)        
 
@@ -127,7 +154,8 @@ for c, t in zip(constituents, transactions):
       logging.debug(transactionCreate)
       continue
 
-          
+
+    #ELSE we identified this constituent in the Bloomerang search results      
     #constituent exists, verify transaction doesn't already exist
     query_str = 'accountId={}&minAmount={}&maxAmount={}'.format(found_const['Id'], t['Amount'], t['Amount'])
     found_trans = Bloomerang.get('transactions?{}'.format(query_str))
