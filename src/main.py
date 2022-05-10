@@ -54,6 +54,7 @@ elif args.manual:
 
   ab_json = Actblue.get_contributions(start_date, end_date)
   logging.debug('Range: {} to {}'.format(start_date, end_date))
+  logging.debug(ab_json)
 
 
 constituents = []
@@ -71,13 +72,28 @@ else:
 
     #screen for some conditions that would prevent us from importing
     #this part is CRITICAL for preventing duplicate uploads
-    if not constituent['PrimaryEmail']:
-      logging.debug('No email, not uploading: {} {}'.format(constituent["FirstName"], constituent['LastName']))
-      continue
-    if float(transaction['Amount']) < 3.0:
-        if not (('PrimaryAddress' in constituent) and (constituent['PrimaryAddress']['State'] == 'NH')):
-          logging.debug('Under $3 and not NH, not uploading to Bloomerang: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+    #and handling junk data from the NNAF form
+
+    #if not NH
+    if not (('PrimaryAddress' in constituent) and 
+            ('State' in constituent['PrimaryAddress']) and
+            (constituent['PrimaryAddress']['State'] == 'NH')):
+  
+      #if below giving threshold
+      if float(transaction['Amount']) < 3.0:
+          logging.debug('Under $3 and not NH, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
           continue
+  
+      #if no email
+      if not ('PrimaryEmail' in constituent):
+        logging.debug('No email, not NH, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+        continue
+
+    #must have either address or email
+    if not (('PrimaryAddress' in constituent) or ('PrimaryEmail' in constituent)):
+        logging.debug('No email or address, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+        continue      
+
         
     constituents.append(constituent)
     transactions.append(transaction)
@@ -109,15 +125,10 @@ for c, t in zip(constituents, transactions):
   else:
     logging.debug("c")
     logging.debug(c)
+
     found_const = False
-    first_result = False
     for fc in constituentSearch['Results']:
 
-      #keep log size down by only logging first (likely) match
-      if not first_result:
-        logging.debug("fc")
-        logging.debug(fc)
-        first_result = True
 
 
       #Prevent Duplicates!
@@ -126,20 +137,31 @@ for c, t in zip(constituents, transactions):
       if (('PrimaryEmail' in fc) and ('PrimaryEmail' in c)):
         if (fc['PrimaryEmail']['Value'].lower() == c['PrimaryEmail']['Value'].lower()):
           found_const = fc
+          logging.debug("fc")
+          logging.debug(fc)
           break
 
-
-      #then if no email match, try to identify by address
+        
+      #then if no email match, try to match by name, street, city
       #Actblue.py should have already deleted c['PrimaryAddress'] if it's blank
-      if (('PrimaryAddress' in c) and ('PrimaryAddress' in fc)): 
-        if (fc['PrimaryAddress']['Street'].lower() == c['PrimaryAddress']['Street'].lower() and 
-            fc['PrimaryAddress']['City'].lower()   == c['PrimaryAddress']['City'].lower()):
-              found_const = fc
-              break
+      try:
+        if (c['FirstName'].lower().strip() == fc['FirstName'].lower().strip() and c['LastName'].lower().strip() == fc['LastName'].lower().strip()):
+          if (('PrimaryAddress' in c) and ('PrimaryAddress' in fc)): 
+            if (fc['PrimaryAddress']['Street'].lower().strip() == c['PrimaryAddress']['Street'].lower().strip() and 
+                fc['PrimaryAddress']['City'].lower().strip()   == c['PrimaryAddress']['City'].lower().strip()):
+                  found_const = fc
+                  logging.debug("fc")
+                  logging.debug(fc)
+                  break
+      except:
+        #sometimes it tries to compare to an address without street, 
+        #i think these were imported manually before this program existed
+        pass
 
 
-    #name matches but email and address don't, assume new constituent
+    #no match in the search results, assume new constituent
     if not found_const:
+
       #if we don't get an email match and there's no address, it's not dupe-safe to upload
       if not ('PrimaryAddress' in c):
         logging.debug('STATUS: no email match, no address provided, skipping')

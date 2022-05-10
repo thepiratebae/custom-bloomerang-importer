@@ -88,21 +88,22 @@ def map_fields(ab_transaction):
     if constituent['PrimaryEmail']['Value'] == '':
         del constituent['PrimaryEmail']
 
-    #may need to add more of these for different countries... Bloomerang doesnt support
-    # 'City, State, and PostalCode are not allowed to be used for Australia. 
+    #some uploads don't provide an address, somehow. Bloomerang wont let us upload with partial address so delete it
+    if constituent['PrimaryAddress']['City'] == '':
+        del constituent['PrimaryAddress']
+
+    elif constituent['PrimaryAddress']['Country'] == '':
+        del constituent['PrimaryAddress'] 
+    
+    # 'City, State, and PostalCode are not allowed to be used for international addresses. 
     # Include city, state, and postal code in Street field instead.'
-    if constituent['PrimaryAddress']['Country'] != 'United States':
+    elif constituent['PrimaryAddress']['Country'] != 'United States':
         constituent['PrimaryAddress']['Street'] += '{}, {} {}'.format(constituent['PrimaryAddress']['City'], 
                                                                     constituent['PrimaryAddress']['State'],
                                                                     constituent['PrimaryAddress']['PostalCode'])
         del constituent['PrimaryAddress']['City']
         del constituent['PrimaryAddress']['State']
         del constituent['PrimaryAddress']['PostalCode']
-
-    #some uploads don't provide an address, somehow. Bloomerang wont let us upload with partial address so delete it
-    elif constituent['PrimaryAddress']['City'] == '':
-        del constituent['PrimaryAddress']
- 
 
 
     transaction = {
