@@ -57,8 +57,15 @@ elif args.manual:
   logging.debug(ab_json)
 
 
+#collecting everything for Bloomerang CRM here
+#but Bloomerang charges per constituent
 constituents = []
 transactions = []
+
+#so lower value targets that we get nationwide from NNAF go here
+#to be added to a Google Spreadsheet
+sheets_constituents = []
+sheets_transactions = []
 
 
 if args.debug:
@@ -81,12 +88,16 @@ else:
   
       #if below giving threshold
       if float(transaction['Amount']) < 3.0:
-          logging.debug('Under $3 and not NH, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
-          continue
+        logging.debug('Under $3 and not NH, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+        sheets_constituents.append(constituent)
+        sheets_transactions.append(transaction)
+        continue
   
       #if no email
       if not ('PrimaryEmail' in constituent):
         logging.debug('No email, not NH, skip: {} {}'.format(constituent["FirstName"], constituent['LastName']))
+        sheets_constituents.append(constituent)
+        sheets_transactions.append(transaction)
         continue
 
     #must have either address or email

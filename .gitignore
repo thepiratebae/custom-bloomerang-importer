@@ -5,3 +5,4 @@
 mock_data
 schema
 *.log
+client_secret.json
