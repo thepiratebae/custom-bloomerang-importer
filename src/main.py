@@ -21,8 +21,7 @@ import datetime
 log_timestamp = datetime.datetime.timestamp(datetime.datetime.now())
 this_path = os.path.dirname(os.path.abspath(__file__))
 log_path = os.path.join(this_path, '..', 'logs', str(log_timestamp) + '.log')
-# logging.basicConfig(level=logging.DEBUG, filename='logs/{}.log'.format(log_timestamp), filemode='w')
-logging.basicConfig(level=logging.DEBUG, filename=log_path, filemode='w')
+logging.basicConfig(level=logging.ERROR, filename=log_path, filemode='w')
 
 ab_json = ''
 
@@ -119,11 +118,14 @@ if not ab_json:
 logging.debug("ab_json")
 logging.debug(ab_json)
 
-
+rows = []
 for c, t in zip(sheets_constituents, sheets_transactions):
-  GoogleSheets.Upload(c, t)
+  rows.append(GoogleSheets.GenerateRow(c, t))
+GoogleSheets.Upload(rows)
+GoogleSheets.Sort()
 
 if args.sheets:
+  import sys
   sys.exit()
 
 for c, t in zip(constituents, transactions):
