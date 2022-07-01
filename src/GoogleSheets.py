@@ -46,7 +46,9 @@ def GenerateRow(constituent, transaction):
 def Upload(rows):
   #connect to spreadsheet
   scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-  secret_file = os.path.join(os.getcwd(), 'client_secret.json')
+  this_path = os.path.dirname(os.path.abspath(__file__))
+  secret_file = os.path.join(this_path, '..', 'client_secret.json')
+  # secret_file = os.path.join(os.getcwd(), 'client_secret.json')
   load_dotenv()
   spreadsheet_id = os.getenv('GOOGLE_SPREADSHEET_ID')
   credentials = service_account.Credentials.from_service_account_file(secret_file, scopes=scopes)
@@ -78,7 +80,9 @@ def Sort():
   # from googleapiclient import discovery
   #connect to spreadsheet
   scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-  secret_file = os.path.join(os.getcwd(), 'client_secret.json')
+  this_path = os.path.dirname(os.path.abspath(__file__))
+  secret_file = os.path.join(this_path, '..', 'client_secret.json')
+  # secret_file = os.path.join(os.getcwd(), 'client_secret.json')
   load_dotenv()
   spreadsheet_id = os.getenv('GOOGLE_SPREADSHEET_ID')
   credentials = service_account.Credentials.from_service_account_file(secret_file, scopes=scopes)
