@@ -10,8 +10,8 @@ import logging
 
 #ranges key
 tx_id = 'D2:D'
-table_append = 'A1:O'
-table_sort = "database!A1:O"
+table_append = 'A2:O'
+table_sort = "database!A2:O"
 
 
 def GenerateRow(constituent, transaction):
